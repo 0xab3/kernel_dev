@@ -55,6 +55,10 @@ forced to be within the first 8 KiB of the kernel file.
 .long 640
 .long 480
 .long 16
+
+# .long 1280
+# .long 720 
+# .long 32
 /*
 The multiboot standard does not define the value of the stack pointer register
 (esp) and it is up to the kernel to provide a stack. This allocates room for a
