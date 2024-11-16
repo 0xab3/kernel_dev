@@ -1,7 +1,7 @@
 #include "../../include/gdt.h"
 
-gdt_format_t gdt_to_anal_format(struct gdt_entry entry) {
-  gdt_format_t anal_formatted = 0;
+gdt_anal_entry_t gdt_to_anal_format(struct gdt_entry entry) {
+  uint64_t anal_formatted = 0;
   int8_t *target = (int8_t *)&anal_formatted;
   if (entry.limit > 0xFFFFF) {
     // kerror("GDT cannot encode limits larger than 0xFFFFF");
