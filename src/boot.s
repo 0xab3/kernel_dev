@@ -1,8 +1,11 @@
 /* Declare constants for the multiboot header.*/
 .set ALIGN,       1<<0                        /* align loaded modules on page boundaries */
 .set MEMINFO,     1<<1                        /* provide memory map */
-.set VIDEO_MODE,  1<<2                        /* provide video mode */
-.set FLAGS,       (ALIGN | MEMINFO | VIDEO_MODE) /* this is the Multiboot 'flag' field */
+# .set VIDEO_MODE,  1<<2                        /* provide video mode */
+
+# .set FLAGS,       (ALIGN | MEMINFO | VIDEO_MODE) /* this is the Multiboot 'flag' field */
+
+.set FLAGS,       (ALIGN | MEMINFO) /* this is the Multiboot 'flag' field */
 .set MAGIC,       0x1BADB002                  /* 'magic number' lets bootloader find the header */
 .set CHECKSUM,    -(MAGIC + FLAGS)            /* checksum of above, to prove we are multiboot */
 
@@ -45,16 +48,16 @@ forced to be within the first 8 KiB of the kernel file.
 .long FLAGS
 .long CHECKSUM
 
-.long 0x00000000
-.long 0x00000000
-.long 0x00000000
-.long 0x00000000
-.long 0x00000000
-
-.long 0x00000000
-.long 640
-.long 480
-.long 16
+# .long 0x00000000
+# .long 0x00000000
+# .long 0x00000000
+# .long 0x00000000
+# .long 0x00000000
+#
+# .long 0x00000000
+# .long 640
+# .long 480
+# .long 16
 
 # .long 1280
 # .long 720 
@@ -87,7 +90,6 @@ doesn't make sense to return from this function as the bootloader is gone.
 .type _start, @function
 
 .extern multiboot_info_ptr
-.type _start, @object
 _start:
 	/*
 	The bootloader has loaded us into 32-bit protected mode on a x86

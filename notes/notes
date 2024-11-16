@@ -1,0 +1,2 @@
+:: c to asm
+   mov 4(%esp), %eax ; get args from c
