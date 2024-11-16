@@ -23,18 +23,22 @@ struct multiboot_info *multiboot_info_ptr;
 // #include "./image.raw.h"
 // };
 
-void test(int32_t test) { int t = test; }
-void kernel_main() {
-  // int32_t c = 0xDEADBEEF;
-  // test(c);
-  gdt_init(0x41);
-  // *(char *)0xb8000 = 'b';
+void setup_gdb() {
+  gdt_format_t gdt_0 = 0;
+  gdt_format_t gdt_1 = gdt_to_anal_format((struct gdt_entry){
+      .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc});
+  gdt_format_t gdt_2 = gdt_to_anal_format((struct gdt_entry){
+      .base = 0x00, .limit = 0xfffff, .access_byte = 0x92, .flags = 0xc});
 
-  // mbv_device dev =
-  //     mbv_device_new((int64_t *)multiboot_info_ptr->framebuffer_addr,
-  //                    multiboot_info_ptr->framebuffer_pitch,
-  //                    multiboot_info_ptr->framebuffer_width,
-  //                    multiboot_info_ptr->framebuffer_height,
-  //                    multiboot_info_ptr->framebuffer_bpp);
-  // mbv_put_sprite(&dev, image_data, 0, 0, 480, 640, 640 * 3);
-}
+  static gdt_format_t table[3] = {0};
+
+  table[0] = gdt_0;
+  table[1] = gdt_1;
+  table[2] = gdt_2;
+
+  static struct gdt_description gdt_table = {
+      .size = (sizeof(gdt_format_t) * 3) - 1, .offset = &table[0]};
+  gdt_init(&gdt_table);
+};
+
+void kernel_main() { setup_gdb(); }
