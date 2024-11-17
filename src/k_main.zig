@@ -14,6 +14,17 @@ pub const std_options = .{
     .logFn = log.uart_log_func,
 };
 
+// todo(shahzad): add stack trace?
+pub fn panic(msg: []const u8, error_return_trace: ?*builtin.StackTrace, ret_addr: ?usize) noreturn {
+    std_writer.printf("paniced with {s}", .{msg});
+    asm volatile (
+        \\hlt
+    );
+    while (true) {}
+    _ = ret_addr;
+    _ = error_return_trace;
+}
+
 const multiboot_info_ptr: *multiboot.multiboot_info = undefined;
 
 fn setup_gdt() void {
