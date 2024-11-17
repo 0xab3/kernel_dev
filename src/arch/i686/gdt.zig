@@ -1,7 +1,7 @@
 const std = @import("std");
 pub const gdt_description = packed struct {
     size: u16,
-    offset: *u64,
+    offset: *const u64,
 };
 
 // note(shahzad): no need to give a shit abt padding struct it's only for
