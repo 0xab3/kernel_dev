@@ -40,4 +40,5 @@ fn setup_interrupts() void {}
 
 export fn kernel_main() callconv(.C) void {
     const ret = uart.init();
+    _ = ret;
 }

@@ -1,6 +1,8 @@
 const std = @import("std");
-const log = std.log;
 const uart = @import("../../i686/io/io_writer.zig");
+
+const log = std.log;
+
 pub fn uart_log_func(
     comptime message_level: log.Level,
     comptime scope: @Type(.EnumLiteral),
