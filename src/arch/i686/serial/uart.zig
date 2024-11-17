@@ -82,7 +82,3 @@ pub fn write(data: []const u8) void {
         outb(COM1, byte);
     }
 }
-pub fn write_callback(_: void, string: []const u8) error{}!usize {
-    write(string);
-    return string.len;
-}

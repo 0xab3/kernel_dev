@@ -68,12 +68,7 @@ pub fn putChar(c: u8) void {
     }
 }
 
-pub fn puts(data: []const u8) void {
+pub fn write(data: []const u8) void {
     for (data) |c|
         putChar(c);
-}
-
-pub fn write_callback(_: void, string: []const u8) error{}!usize {
-    puts(string);
-    return string.len;
 }

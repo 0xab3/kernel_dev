@@ -2,8 +2,7 @@ const multiboot = @cImport("./include/multiboot.h");
 const gdt = @import("./arch/i686/gdt.zig");
 const gdt_entry = gdt.gdt_entry;
 const uart = @import("./arch/i686/serial/uart.zig");
-const io_writer = @import("./arch/i686/io/io_writer.zig").io_writer;
-const io_writer_config = @import("./arch/i686/io/io_writer.zig").io_writer_config;
+const std_writer = @import("./arch/i686/io/io_writer.zig").std_writer;
 
 const multiboot_info_ptr: *multiboot.multiboot_info = undefined;
 fn setup_gdb() void {
@@ -24,10 +23,9 @@ fn setup_interrupts() void {}
 
 export fn kernel_main() callconv(.C) void {
     const ret = uart.init();
-    const writer = io_writer.init(.{ .console_out = true, .uart_out = ret });
     if (ret == false) {
-        writer.printf("failed to initialize serial port\n", .{});
+        std_writer.printf("warn: failed to initialize serial port\n", .{});
     } else {
-        writer.printf("serial port initialized successfully\n", .{});
+        std_writer.printf("info: serial port initialized successfully\n", .{});
     }
 }
