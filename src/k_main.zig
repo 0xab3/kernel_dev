@@ -1,10 +1,21 @@
-const multiboot = @cImport("./include/multiboot.h");
+const std = @import("std");
 const gdt = @import("./arch/i686/gdt.zig");
-const gdt_entry = gdt.gdt_entry;
 const uart = @import("./arch/i686/serial/uart.zig");
+const log = @import("./arch/std/debug/log.zig");
 const std_writer = @import("./arch/i686/io/io_writer.zig").std_writer;
 
+const multiboot = @cImport("./include/multiboot.h");
+
+const gdt_entry = gdt.gdt_entry;
+const builtin = std.builtin;
+
+pub const std_options = .{
+    .log_level = .debug,
+    .logFn = log.uart_log_func,
+};
+
 const multiboot_info_ptr: *multiboot.multiboot_info = undefined;
+
 fn setup_gdt() void {
     const gdt_0: u64 = 0;
     const gdt_1: u64 = gdt_entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc });
@@ -13,14 +24,9 @@ fn setup_gdt() void {
     var gdt_table: gdt.gdt_description = .{ .size = (@sizeOf(u64) * 3) - 1, .offset = &table[0] };
     gdt.init(&gdt_table);
 }
+
 fn setup_interrupts() void {}
 
 export fn kernel_main() callconv(.C) void {
     const ret = uart.init();
-    if (ret == false) {
-        std_writer.printf("warn: failed to initialize serial port\n", .{});
-    } else {
-        std_writer.printf("info: serial port initialized successfully\n", .{});
-    }
-    setup_gdt();
 }
