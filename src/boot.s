@@ -89,7 +89,7 @@ doesn't make sense to return from this function as the bootloader is gone.
 .global _start
 .type _start, @function
 
-.extern multiboot_info_ptr
+# .extern multiboot_info_ptr
 _start:
 	/*
 	The bootloader has loaded us into 32-bit protected mode on a x86
@@ -111,7 +111,7 @@ _start:
 	*/
 	mov $stack_top, %esp
 
-  mov  %ebx, multiboot_info_ptr
+  # mov  %ebx, multiboot_info_ptr
 	/*
 	This is a good place to initialize crucial processor state before the
 	high-level kernel is entered. It's best to minimize the early

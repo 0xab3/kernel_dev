@@ -1,2 +1,2 @@
-gdb --symbols=./builddir/kernel.sym -x ./.gdb
+gdb --symbols=./zig-out/kernel.sym -x ./.gdb
 
