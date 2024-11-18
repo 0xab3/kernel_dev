@@ -74,10 +74,15 @@ export fn kernel_main() callconv(.C) void {
     setup_gdt();
     setup_interrupts();
 
+    var res: i32 = undefined;
     //note(shahzad): triggering divide by zero exception
     asm volatile (
         \\mov $2, %eax
-        \\mov $2, %ecx
-        \\div %ecx
+        \\mov $0, %ebx
+        \\xor %edx, %edx 
+        \\div %ebx
+        \\ mov %eax, %[ret]
+        : [ret] "=m" (res),
     );
+    std.log.debug("{}", .{res});
 }
