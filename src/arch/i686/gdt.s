@@ -7,12 +7,12 @@ gdt_init:
   lgdt (%eax)
   ljmp $0x8,$reload_CS
 reload_CS:
-  mov %ax, 0x10 
-  mov %ds, %ax
-  mov %es, %ax
-  mov %fs, %ax
-  mov %gs, %ax
-  mov %ss, %ax
+  mov $0x10, %ax 
+  mov %ax,%ds 
+  mov %ax,%es 
+  mov %ax,%fs 
+  mov %ax,%gs 
+  mov %ax,%ss 
   nop
   sti 
-  ret
+  ret 
