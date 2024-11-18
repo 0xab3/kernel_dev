@@ -29,6 +29,7 @@ pub fn build(b: *std.Build) void {
     });
     kernel.addAssemblyFile(b.path("src/boot.s"));
     kernel.addAssemblyFile(b.path("src/arch/i686/gdt.s"));
+    kernel.addAssemblyFile(b.path("src/arch/i686/interrupts/interrupt.s"));
 
     kernel.setLinkerScript(b.path("src/linker.ld"));
     b.installArtifact(kernel);
