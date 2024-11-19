@@ -27,7 +27,7 @@ pub fn k_hlt() noreturn {
 // todo(shahzad): add stack trace?
 pub fn panic(msg: []const u8, _: ?*builtin.StackTrace, ret_addr: ?usize) noreturn {
     _ = ret_addr;
-    stdout_writer.printf("paniced with {s}", .{msg});
+    stdout_writer.printf("paniced with {s}\n", .{msg});
     k_hlt();
 }
 
@@ -50,20 +50,12 @@ fn setup_gdt() void {
 }
 
 //todo(shahzad): please impl an alloc or we die
-var idt_offset_table: [255]idt.gate = undefined;
 fn setup_interrupts() void {
-    const gate_0: idt.gate = idt.gate_new(@intFromPtr(&isr.default_signal_handler), 0x8, idt.gate_t.interrupt_gate_32, 0x00);
-    for (0..255) |i| {
-        idt_offset_table[i] = gate_0;
-    }
-    //note(shahzad): divide by zero exception is 0th in idt
-    idt_offset_table[0] = idt.gate_new(@intFromPtr(&isr.div_by_zero), 0x8, idt.gate_t.interrupt_gate_32, 0x00);
-
-    var idt_table: idt.description = .{
-        .size = @sizeOf(idt.gate) * 255 - 1,
-        .offset = &idt_offset_table[0],
+    // todo(shahzad): impl allocator
+    const table = struct {
+        var idt_offset_table: [256]idt.gate = undefined;
     };
-
+    const idt_table = idt.new_default(&table.idt_offset_table);
     idt.init(&idt_table);
 }
 
@@ -75,8 +67,7 @@ export fn kernel_main() callconv(.C) void {
     setup_gdt();
     setup_interrupts();
 
-    var res: i32 = undefined;
-    //note(shahzad): triggering divide by zero exception
+    // note(shahzad): triggering divide by zero exception
     asm volatile (
         \\mov $2, %eax
         \\mov $0, %ebx
