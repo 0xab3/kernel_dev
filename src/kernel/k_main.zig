@@ -6,6 +6,7 @@ const stdout_writer = @import("./stdout_writer.zig").stdout_writer;
 const isr = @import("./arch/i686/interrupts/isr.zig");
 const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
+const pic = @import("./arch/i686/interrupts/pic.zig");
 const is_data_ready = uart.is_data_ready;
 
 const multiboot = @cImport("./include/multiboot.h");
@@ -66,15 +67,10 @@ export fn kernel_main() callconv(.C) void {
     }
     setup_gdt();
     setup_interrupts();
+    pic.disable();
 
     // note(shahzad): triggering divide by zero exception
     asm volatile (
-        \\mov $2, %eax
-        \\mov $0, %ebx
-        \\xor %edx, %edx 
-        \\div %ebx
-        \\ mov %eax, %[ret]
-        : [ret] "=m" (res),
+        \\ int $0
     );
-    std.log.debug("{}", .{res});
 }
