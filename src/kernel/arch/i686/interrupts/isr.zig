@@ -1,5 +1,7 @@
 const std = @import("std");
+const io = @import("../io/io.zig");
 const root = @import("root");
+const pic = @import("./pic.zig");
 const stdout_writer = @import("../../../stdout_writer.zig").stdout_writer;
 
 pub fn default_signal_handler() callconv(.Interrupt) noreturn {
@@ -62,6 +64,7 @@ pub fn double_fault(code: *u32) callconv(.Interrupt) noreturn {
 }
 
 // Coprocessor Segment Overrun (0x9)
+// note(shahzad): this shit is not used nowadays
 pub fn coproc_segment_overrun() callconv(.Interrupt) noreturn {
     stdout_writer.printf("Coprocessor segment overrun exception occurred\n", .{});
     root.k_hlt();
@@ -168,7 +171,16 @@ pub fn fpu_error_interrupt() callconv(.Interrupt) noreturn {
     stdout_writer.printf("FPU error interrupt occurred\n", .{});
     root.k_hlt();
 }
+pub fn IRQ_0() callconv(.Interrupt) void {
+    pic.send_eoi(0);
+}
+//IRQ_1: keyboard
+pub fn IRQ_1() callconv(.Interrupt) void {
+    //todo(shahzad): read from the inner function instead of here
+    const scancode = io.inb(0x60);
+    pic.send_eoi(1);
+}
 pub fn general_isr() callconv(.Interrupt) noreturn {
-    stdout_writer.printf("unhandled exception occured\n", .{});
+    stdout_writer.printf("general interrupt occured\n", .{});
     root.k_hlt();
 }

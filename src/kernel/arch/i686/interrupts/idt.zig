@@ -87,8 +87,8 @@ pub fn new_default(idt_offset_table: *[256]gate) description {
     idt_offset_table[0x1D] = gate_new(@intFromPtr(&isr.vmm_communication_exception), 0x8, gate_t.interrupt_gate_32, 0x00);
     idt_offset_table[0x1E] = gate_new(@intFromPtr(&isr.security_exception), 0x8, gate_t.interrupt_gate_32, 0x00);
     idt_offset_table[0x1F] = gate_new(@intFromPtr(&isr.reserved), 0x8, gate_t.interrupt_gate_32, 0x00);
-    idt_offset_table[0x20] = gate_new(@intFromPtr(&isr.triple_fault), 0x8, gate_t.interrupt_gate_32, 0x00);
-    idt_offset_table[0x21] = gate_new(@intFromPtr(&isr.fpu_error_interrupt), 0x8, gate_t.interrupt_gate_32, 0x00);
+    idt_offset_table[0x20] = gate_new(@intFromPtr(&isr.IRQ_0), 0x8, gate_t.interrupt_gate_32, 0x00);
+    idt_offset_table[0x21] = gate_new(@intFromPtr(&isr.IRQ_1), 0x8, gate_t.interrupt_gate_32, 0x00);
     const idt_table: description = .{
         .size = @sizeOf(gate) * 255 - 1,
         .offset = &idt_offset_table[0],
