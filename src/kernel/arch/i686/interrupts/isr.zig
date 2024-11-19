@@ -1,6 +1,6 @@
 const std = @import("std");
 const root = @import("root");
-const std_writer = @import("../io/io_writer.zig").std_writer;
+const std_writer = @import("../../../stdout_writer.zig").stdout_writer;
 
 pub fn div_by_zero() callconv(.Interrupt) noreturn {
     std_writer.printf("divide by zero exception occured\n", .{});

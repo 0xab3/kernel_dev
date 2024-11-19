@@ -22,16 +22,16 @@ pub fn build(b: *std.Build) void {
 
     const kernel = b.addExecutable(.{
         .name = "kernel.elf",
-        .root_source_file = b.path("src/k_main.zig"),
+        .root_source_file = b.path("src/kernel/k_main.zig"),
         .target = b.resolveTargetQuery(target_query),
         .optimize = optimize,
         .code_model = .kernel,
     });
-    kernel.addAssemblyFile(b.path("src/boot.s"));
-    kernel.addAssemblyFile(b.path("src/arch/i686/gdt.s"));
-    kernel.addAssemblyFile(b.path("src/arch/i686/interrupts/interrupt.s"));
+    kernel.addAssemblyFile(b.path("src/kernel/boot.s"));
+    kernel.addAssemblyFile(b.path("src/kernel/arch/i686/gdt.s"));
+    kernel.addAssemblyFile(b.path("src/kernel/arch/i686/interrupts/idt.s"));
 
-    kernel.setLinkerScript(b.path("src/linker.ld"));
+    kernel.setLinkerScript(b.path("src/kernel/linker.ld"));
     b.installArtifact(kernel);
 
     const kernel_step = b.step("kernel", "Build the kernel");

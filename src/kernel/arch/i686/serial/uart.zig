@@ -1,9 +1,9 @@
 //note(shahzad): i don't understand any of this shit
 const std = @import("std");
-const serial = @import("./serial.zig");
+const io = @import("../io/io.zig");
 const fmt = std.fmt;
-const outb = serial.outb;
-const inb = serial.inb;
+const outb = io.outb;
+const inb = io.inb;
 
 const COM1 = 0x3F8;
 

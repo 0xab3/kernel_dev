@@ -1,5 +1,5 @@
 const std = @import("std");
-const uart = @import("../../i686/io/io_writer.zig");
+const uart = @import("../stdout_writer.zig");
 
 const log = std.log;
 

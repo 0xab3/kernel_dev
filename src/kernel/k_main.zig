@@ -1,14 +1,15 @@
 const std = @import("std");
 const gdt = @import("./arch/i686/gdt.zig");
 const uart = @import("./arch/i686/serial/uart.zig");
-const log = @import("./arch/std/debug/log.zig");
-const std_writer = @import("./arch/i686/io/io_writer.zig").std_writer;
-const interrupt_handler = @import("./arch/i686/interrupts/interrupt_handlers.zig");
-const interrupt = @import("./arch/i686/interrupts/interrupt.zig");
+const log = @import("./debug/log.zig");
+const stdout_writer = @import("./stdout_writer.zig").stdout_writer;
+const isr = @import("./arch/i686/interrupts/isr.zig");
+const idt = @import("./arch/i686/interrupts/idt.zig");
+const io = @import("./arch/i686/io/io.zig");
+const is_data_ready = uart.is_data_ready;
 
 const multiboot = @cImport("./include/multiboot.h");
 
-const gdt_entry = gdt.gdt_entry;
 const builtin = std.builtin;
 
 pub const std_options = .{
@@ -26,7 +27,7 @@ pub fn k_hlt() noreturn {
 // todo(shahzad): add stack trace?
 pub fn panic(msg: []const u8, _: ?*builtin.StackTrace, ret_addr: ?usize) noreturn {
     _ = ret_addr;
-    std_writer.printf("paniced with {s}", .{msg});
+    stdout_writer.printf("paniced with {s}", .{msg});
     k_hlt();
 }
 
@@ -34,8 +35,8 @@ const multiboot_info_ptr: *multiboot.multiboot_info = undefined;
 
 fn setup_gdt() void {
     const gdt_0: u64 = 0;
-    const gdt_1: u64 = gdt_entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc });
-    const gdt_2: u64 = gdt_entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x92, .flags = 0xc });
+    const gdt_1: u64 = gdt.entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc });
+    const gdt_2: u64 = gdt.entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x92, .flags = 0xc });
     //note(shahzad): equivalent to static keyword in c
     const table = struct {
         var table: [3]u64 = undefined;
@@ -44,26 +45,26 @@ fn setup_gdt() void {
     table.table[1] = gdt_1;
     table.table[2] = gdt_2;
 
-    var gdt_table: gdt.gdt_description = .{ .size = (@sizeOf(u64) * 3) - 1, .offset = &table.table[0] };
+    var gdt_table: gdt.description = .{ .size = (@sizeOf(u64) * 3) - 1, .offset = &table.table[0] };
     gdt.init(&gdt_table);
 }
 
 //todo(shahzad): please impl an alloc or we die
-var idt_offset_table: [255]interrupt.idt_gate_t = undefined;
+var idt_offset_table: [255]idt.gate = undefined;
 fn setup_interrupts() void {
-    const gate_0: interrupt.idt_gate_t = interrupt.idt_gate_new(@intFromPtr(&interrupt_handler.default_signal_handler), 0x8, interrupt.gate_t.interrupt_gate_32, 0x00);
+    const gate_0: idt.gate = idt.gate_new(@intFromPtr(&isr.default_signal_handler), 0x8, idt.gate_t.interrupt_gate_32, 0x00);
     for (0..255) |i| {
         idt_offset_table[i] = gate_0;
     }
     //note(shahzad): divide by zero exception is 0th in idt
-    idt_offset_table[0] = interrupt.idt_gate_new(@intFromPtr(&interrupt_handler.div_by_zero), 0x8, interrupt.gate_t.interrupt_gate_32, 0x00);
+    idt_offset_table[0] = idt.gate_new(@intFromPtr(&isr.div_by_zero), 0x8, idt.gate_t.interrupt_gate_32, 0x00);
 
-    var idt_table: interrupt.idt_description = .{
-        .size = @sizeOf(interrupt.idt_gate_t) * 255 - 1,
+    var idt_table: idt.description = .{
+        .size = @sizeOf(idt.gate) * 255 - 1,
         .offset = &idt_offset_table[0],
     };
 
-    interrupt.init(&idt_table);
+    idt.init(&idt_table);
 }
 
 export fn kernel_main() callconv(.C) void {
