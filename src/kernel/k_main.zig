@@ -65,12 +65,10 @@ export fn kernel_main() callconv(.C) void {
     if (ret == false) {
         return;
     }
+    pic.init();
     setup_gdt();
     setup_interrupts();
-    pic.disable();
 
+    while (true) {}
     // note(shahzad): triggering divide by zero exception
-    asm volatile (
-        \\ int $0
-    );
 }

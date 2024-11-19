@@ -2,6 +2,7 @@ const std = @import("std");
 const io = @import("../io/io.zig");
 const root = @import("root");
 const pic = @import("./pic.zig");
+const keyboard = @import("../io/ps2/keyboard.zig");
 const stdout_writer = @import("../../../stdout_writer.zig").stdout_writer;
 
 pub fn default_signal_handler() callconv(.Interrupt) noreturn {
@@ -178,6 +179,7 @@ pub fn IRQ_0() callconv(.Interrupt) void {
 pub fn IRQ_1() callconv(.Interrupt) void {
     //todo(shahzad): read from the inner function instead of here
     const scancode = io.inb(0x60);
+    keyboard.translate_key(scancode);
     pic.send_eoi(1);
 }
 pub fn general_isr() callconv(.Interrupt) noreturn {
