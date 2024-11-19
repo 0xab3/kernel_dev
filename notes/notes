@@ -1,2 +1,9 @@
-:: c to asm
-   mov 4(%esp), %eax ; get args from c
+:: stdcall to asm
+   mov 4(%esp), %eax ; get args from the higher level lang
+
+:: asm int argument and return shit
+asm volatile (
+      \\inb %[port], %[ret]
+      : [ret] "=r" (-> u8),
+      : [port] "N{dx}" (port),
+);
