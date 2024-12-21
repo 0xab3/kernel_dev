@@ -39,7 +39,7 @@ pub fn init() void {
     //note(shahzad): send vector table offset
     io.outb(PIC1_DATA, 0x20); //note(shahzad): 0x0..0x1f is proc exceptions so mapping it from 0x20
     io.wait();
-    io.outb(PIC2_DATA, 0x28); //note(shahzad)!: command is only used to send
+    io.outb(PIC2_DATA, 0x28); //note(shahzad)!: command is only used to send eoi and init the chip
     io.wait();
 
     //note(shahzad): set the pin conifg
