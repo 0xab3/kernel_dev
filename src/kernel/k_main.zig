@@ -7,9 +7,13 @@ const isr = @import("./arch/i686/interrupts/isr.zig");
 const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
+const memory = @import("./arch/i686/memory/memory.zig");
+const allocator = @import("./arch/common/k_alloc.zig");
 const is_data_ready = uart.is_data_ready;
+const hacks = @import("./debug/hacks.zig");
+const csrc = hacks.csrc;
 
-const multiboot = @cImport("./include/multiboot.h");
+const multiboot = @import("./multiboot.zig");
 
 const builtin = std.builtin;
 
@@ -25,14 +29,13 @@ pub fn k_hlt() noreturn {
     );
     while (true) {}
 }
+
 // todo(shahzad): add stack trace?
-pub fn panic(msg: []const u8, _: ?*builtin.StackTrace, ret_addr: ?usize) noreturn {
-    _ = ret_addr;
-    stdout_writer.printf("paniced with {s}\n", .{msg});
+pub fn panic(msg: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
+    @setCold(true);
+    stdout_writer.printf("panic: {s} \n", .{msg});
     k_hlt();
 }
-
-const multiboot_info_ptr: *multiboot.multiboot_info = undefined;
 
 fn setup_gdt() void {
     const gdt_0: u64 = 0;
@@ -59,16 +62,41 @@ fn setup_interrupts() void {
     const idt_table = idt.new_default(&table.idt_offset_table);
     idt.init(&idt_table);
 }
+fn setup_memory() void {
+    memory.init();
+}
 
-export fn kernel_main() callconv(.C) void {
+export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) void {
     const ret = uart.init();
     if (ret == false) {
         return;
     }
-    pic.init();
-    setup_gdt();
-    setup_interrupts();
 
-    while (true) {}
-    // note(shahzad): triggering divide by zero exception
+    var kalloc = allocator.bump_allocator(){};
+    const allc = kalloc.allocator(.{ .multiboot_memory_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t), .multiboot_memory_map = multiboot_info.mmap_addr }) catch |err| {
+        std.debug.panic("{} failed to initialize allocator: {any}\n", .{ csrc(@src()), err });
+    };
+    const temp = allc.alloc(i32, 59) catch |e|
+        {
+        std.debug.panic("{any}\n", .{e});
+    };
+    const temp2 = allc.alloc(i32, 59) catch |e|
+        {
+        std.debug.panic("{any}\n", .{e});
+    };
+    allc.free(temp);
+    allc.free(temp2);
+
+    const temp1 = allc.alloc(i32, 59) catch |e|
+        {
+        std.debug.panic("{any}\n", .{e});
+    };
+    const temp3 = allc.alloc(i32, 59) catch |e|
+        {
+        std.debug.panic("{any}\n", .{e});
+    };
+    stdout_writer.printf("{*}\n", .{temp1.ptr});
+    stdout_writer.printf("{*}\n", .{temp3.ptr});
+    allc.free(temp1);
+    allc.free(temp3);
 }

@@ -111,7 +111,9 @@ _start:
 	*/
 	mov $stack_top, %esp
 
-  # mov  %ebx, multiboot_info_ptr
+  # push %ebp
+  #   mov     %esp, %ebp
+  push %ebx /* push multiboot info header */
 	/*
 	This is a good place to initialize crucial processor state before the
 	high-level kernel is entered. It's best to minimize the early
