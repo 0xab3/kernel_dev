@@ -35,7 +35,7 @@ pub const out_writer = struct {
         return writer;
     }
 
-    pub fn printf(self: out_writer, comptime format: []const u8, args: anytype) void {
+    pub fn print(self: out_writer, comptime format: []const u8, args: anytype) void {
         if (self.console_writer) |writer| {
             std.fmt.format(writer.*, format, args) catch unreachable;
         }
