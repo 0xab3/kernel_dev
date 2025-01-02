@@ -8,8 +8,8 @@ const stdout_writer = @import("../../stdout_writer.zig").stdout_writer;
 //we support 512 allocations??
 const memory_map_entry = struct {
     type: u16,
-    length: u64,
-    offset: u64, //offset inside the memory
+    len: u64,
+    addr: u64,
 };
 
 const config = struct {
@@ -19,7 +19,7 @@ const config = struct {
     kern_end: u32,
 };
 // note(shahzad): never have i ever thought i would need to actually impl something like this
-pub fn bump_allocator() type {
+pub fn arena_like_allocator() type {
     return struct {
         free_list: std.ArrayList(memory_map_entry) = undefined,
         used_list: std.ArrayList(memory_map_entry) = undefined,
@@ -49,7 +49,7 @@ pub fn bump_allocator() type {
             _ = ret_addr;
             const self: *Self = @ptrCast(@alignCast(ctx));
             for (self.used_list.items, 0..) |entry, i| {
-                if (entry.offset == @intFromPtr(buf.ptr)) {
+                if (entry.addr == @intFromPtr(buf.ptr)) {
                     self.free_list.append(self.used_list.orderedRemove(i)) catch |err| {
                         std.log.debug("k_malloc.alloc: failed to append to allocation to free_list! {any}\n", .{err});
                     };
@@ -60,14 +60,14 @@ pub fn bump_allocator() type {
         }
 
         fn get_remaining_chunk_after_alloc(_: Self, alloc_len: usize, mem_align: usize, entry: memory_map_entry) memory_map_entry {
-            if (alloc_len > entry.length) {
+            if (alloc_len > entry.len) {
                 std.debug.panic("{} unreachable", .{csrc(@src())});
             }
 
-            const new_offset = std.mem.alignForward(usize, @as(usize, @intCast(entry.offset)) + alloc_len, mem_align);
+            const new_offset = std.mem.alignForward(usize, @as(usize, @intCast(entry.addr)) + alloc_len, mem_align);
             return .{
-                .offset = new_offset,
-                .length = entry.length - (new_offset - entry.offset), // very shit way of doing this
+                .addr = new_offset,
+                .len = entry.len - (new_offset - entry.addr), // very shit way of doing this
                 .type = multiboot.MULTIBOOT_MEMORY_AVAILABLE,
             };
         }
@@ -84,12 +84,12 @@ pub fn bump_allocator() type {
             const previous_chunk = self.free_list.items[smallest_chunk_idx];
             const new_chunk = self.get_remaining_chunk_after_alloc(len, ptr_align, previous_chunk);
             const used_chunk: memory_map_entry = .{
-                .offset = previous_chunk.offset,
-                .length = new_chunk.offset - previous_chunk.offset,
+                .addr = previous_chunk.addr,
+                .len = new_chunk.addr - previous_chunk.addr,
                 .type = multiboot.MULTIBOOT_MEMORY_AVAILABLE,
             };
 
-            const addr: u32 = @intCast(used_chunk.offset);
+            const addr: u32 = @intCast(used_chunk.addr);
             self.free_list.items[smallest_chunk_idx] = new_chunk;
 
             self.used_list.append(used_chunk) catch |err| {
@@ -103,7 +103,7 @@ pub fn bump_allocator() type {
             var cur_size: u64 = 0;
 
             for (self.free_list.items, 0..) |entry, idx| {
-                if (entry.length > size and (cur_size == 0 or cur_size > size)) {
+                if (entry.len > size and (cur_size == 0 or cur_size > size)) {
                     cur_size = size;
                     index = @intCast(idx);
                 }
@@ -127,17 +127,17 @@ pub fn bump_allocator() type {
                     continue;
                 }
 
-                var mem_map_entry: memory_map_entry = .{ .offset = entry.addr, .length = entry.len, .type = @intCast(entry.type) };
+                var mem_map_entry: memory_map_entry = .{ .addr = entry.addr, .len = entry.len, .type = @intCast(entry.type) };
 
                 //check if kernel is part of the memory chunk
                 if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_start)) {
                     @setCold(true);
                     const pre_kernel_memory: memory_map_entry = .{
-                        .offset = mem_map_entry.offset,
-                        .length = cfg.kern_start - mem_map_entry.offset,
+                        .addr = mem_map_entry.addr,
+                        .len = cfg.kern_start - mem_map_entry.addr,
                         .type = @intCast(entry.type),
                     };
-                    if (pre_kernel_memory.length != 0) {
+                    if (pre_kernel_memory.len != 0) {
                         try self.free_list.append(pre_kernel_memory);
                         is_kernel_in_memory = true;
                     }
@@ -145,11 +145,11 @@ pub fn bump_allocator() type {
                 if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_end)) {
                     @setCold(true);
                     const post_kernel_memory: memory_map_entry = .{
-                        .offset = cfg.kern_end,
-                        .length = (mem_map_entry.offset + mem_map_entry.length) - cfg.kern_end,
+                        .addr = cfg.kern_end,
+                        .len = (mem_map_entry.addr + mem_map_entry.len) - cfg.kern_end,
                         .type = @intCast(entry.type),
                     };
-                    if (post_kernel_memory.length != 0) {
+                    if (post_kernel_memory.len != 0) {
                         try self.free_list.append(post_kernel_memory);
                         is_kernel_in_memory = true;
                     }
@@ -165,7 +165,7 @@ pub fn bump_allocator() type {
                 }
                 if (entry.addr == 0) {
                     //todo(shahzad)!!!: this is very bad and should be fixed
-                    mem_map_entry.offset += 4;
+                    mem_map_entry.addr += 4;
                 }
                 try self.free_list.append(mem_map_entry);
             }

@@ -76,7 +76,7 @@ export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) 
 
     // normally you would give the config to the function while creating the type but
     // as it is comptime we give it to allocator
-    var kalloc = allocator.bump_allocator(){};
+    var kalloc = allocator.arena_like_allocator(){};
     const allc = kalloc.allocator(.{
         .multiboot_memory_map_len = multiboot_mem_map_len,
         .multiboot_memory_map = multiboot_info.mmap_addr,
