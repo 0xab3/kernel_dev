@@ -15,4 +15,4 @@ reload_CS:
   mov %ax,%ss 
   nop
   sti 
-  ret 
+  ret $4

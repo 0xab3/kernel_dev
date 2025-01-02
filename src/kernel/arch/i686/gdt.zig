@@ -37,7 +37,7 @@ pub const entry = struct {
         return anal_formatted;
     }
 };
-pub extern fn gdt_init(arg: *description) void;
+pub extern fn gdt_init(arg: *description) callconv(.Stdcall) void;
 
 //note(shahzad): idk why i am calling this function init but it is what it is
 pub const init = gdt_init;
