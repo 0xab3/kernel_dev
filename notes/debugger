@@ -1,0 +1,3 @@
+show interrupts:
+
+* use qemu with -d int option
