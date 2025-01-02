@@ -52,6 +52,9 @@ fn setup_gdt() void {
     gdt.init(&gdt_table);
 }
 
+extern const _kern_start: i32;
+extern const _kern_end: i32;
+
 //todo(shahzad): please impl an alloc or we die
 fn setup_interrupts() void {
     // todo(shahzad): impl allocator
@@ -63,13 +66,23 @@ fn setup_interrupts() void {
 }
 
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) void {
+    const kern_start = @intFromPtr(&_kern_start);
+    const kern_end = @intFromPtr(&_kern_end);
+    const multiboot_mem_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t);
     const ret = uart.init();
     if (ret == false) {
         return;
     }
 
+    // normally you would give the config to the function while creating the type but
+    // as it is comptime we give it to allocator
     var kalloc = allocator.bump_allocator(){};
-    const allc = kalloc.allocator(.{ .multiboot_memory_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t), .multiboot_memory_map = multiboot_info.mmap_addr }) catch |err| {
+    const allc = kalloc.allocator(.{
+        .multiboot_memory_map_len = multiboot_mem_map_len,
+        .multiboot_memory_map = multiboot_info.mmap_addr,
+        .kern_start = kern_start,
+        .kern_end = kern_end,
+    }) catch |err| {
         std.debug.panic("{} failed to initialize allocator: {any}\n", .{ csrc(@src()), err });
     };
 

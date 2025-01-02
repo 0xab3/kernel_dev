@@ -2,6 +2,7 @@ const std = @import("std");
 const multiboot = @import("../../multiboot.zig");
 const hashmap = std.hash_map;
 const csrc = @import("../../debug/hacks.zig").csrc;
+const utils = @import("../../utils.zig");
 const stdout_writer = @import("../../stdout_writer.zig").stdout_writer;
 // note(shahzad): memory map for dump_allocator
 //we support 512 allocations??
@@ -14,6 +15,8 @@ const memory_map_entry = struct {
 const config = struct {
     multiboot_memory_map_len: u32,
     multiboot_memory_map: u32,
+    kern_start: u32,
+    kern_end: u32,
 };
 // note(shahzad): never have i ever thought i would need to actually impl something like this
 pub fn bump_allocator() type {
@@ -56,7 +59,7 @@ pub fn bump_allocator() type {
             @panic("unreachable: k_malloc.free: used list doesn't contain allocation\n");
         }
 
-        fn get_remaining_chunk_after_alloc(alloc_len: usize, mem_align: usize, entry: memory_map_entry) memory_map_entry {
+        fn get_remaining_chunk_after_alloc(_: Self, alloc_len: usize, mem_align: usize, entry: memory_map_entry) memory_map_entry {
             if (alloc_len > entry.length) {
                 std.debug.panic("{} unreachable", .{csrc(@src())});
             }
@@ -79,7 +82,7 @@ pub fn bump_allocator() type {
                 return null;
             };
             const previous_chunk = self.free_list.items[smallest_chunk_idx];
-            const new_chunk = get_remaining_chunk_after_alloc(len, ptr_align, previous_chunk);
+            const new_chunk = self.get_remaining_chunk_after_alloc(len, ptr_align, previous_chunk);
             const used_chunk: memory_map_entry = .{
                 .offset = previous_chunk.offset,
                 .length = new_chunk.offset - previous_chunk.offset,
@@ -92,19 +95,6 @@ pub fn bump_allocator() type {
             self.used_list.append(used_chunk) catch |err| {
                 std.log.debug("k_malloc.alloc: failed to append to allocation to used_list! {any}\n", .{err});
             };
-            std.log.debug("current of free list", .{});
-            std.log.debug("------------------------------", .{});
-            for (self.free_list.items) |value| {
-                std.log.debug("{}", .{value});
-            }
-            std.log.debug("------------------------------", .{});
-
-            std.log.debug("current of used list", .{});
-            std.log.debug("------------------------------", .{});
-            for (self.used_list.items) |value| {
-                std.log.debug("{}", .{value});
-            }
-            std.log.debug("------------------------------", .{});
             return @ptrFromInt(std.mem.alignForward(usize, addr, ptr_align));
         }
         // find the smallest chuck that we can allocate in the free list and return the index
@@ -123,31 +113,69 @@ pub fn bump_allocator() type {
             }
             return error.OutOfMemory;
         }
-        fn free_list_from_multiboot_mem_map(self: *Self, multiboot_mem_map: []multiboot.multiboot_memory_map_t) !void {
+
+        fn free_list_from_multiboot_mem_map(self: *Self, cfg: config) !void {
+            const mmap_ptr: [*]multiboot.multiboot_memory_map_t = @ptrFromInt(cfg.multiboot_memory_map);
+            const multiboot_mem_map = mmap_ptr[0..cfg.multiboot_memory_map_len];
             for (
                 multiboot_mem_map,
             ) |entry| {
+                var is_kernel_in_memory = false;
                 if (entry.type != multiboot.MULTIBOOT_MEMORY_AVAILABLE) {
                     //todo(shahzad)!!: handle memory that is not available
                     std.log.debug("ignoring memory map as it is not available {}\n", .{entry});
                     continue;
                 }
 
-                if (entry.addr == 0) {
-                    //todo(shahzad)!!!: this is very bad and should be fixed
-                    try self.free_list.append(.{ .offset = entry.addr + 4, .length = entry.len, .type = @intCast(entry.type) });
+                var mem_map_entry: memory_map_entry = .{ .offset = entry.addr, .length = entry.len, .type = @intCast(entry.type) };
+
+                //check if kernel is part of the memory chunk
+                if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_start)) {
+                    @setCold(true);
+                    const pre_kernel_memory: memory_map_entry = .{
+                        .offset = mem_map_entry.offset,
+                        .length = cfg.kern_start - mem_map_entry.offset,
+                        .type = @intCast(entry.type),
+                    };
+                    if (pre_kernel_memory.length != 0) {
+                        try self.free_list.append(pre_kernel_memory);
+                        is_kernel_in_memory = true;
+                    }
+                }
+                if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_end)) {
+                    @setCold(true);
+                    const post_kernel_memory: memory_map_entry = .{
+                        .offset = cfg.kern_end,
+                        .length = (mem_map_entry.offset + mem_map_entry.length) - cfg.kern_end,
+                        .type = @intCast(entry.type),
+                    };
+                    if (post_kernel_memory.length != 0) {
+                        try self.free_list.append(post_kernel_memory);
+                        is_kernel_in_memory = true;
+                    }
+                }
+
+                if (is_kernel_in_memory) {
                     continue;
                 }
-                try self.free_list.append(.{ .offset = entry.addr, .length = entry.len, .type = @intCast(entry.type) });
+
+                //check if memory chunk is part of kernel
+                if (utils.is_in_range(cfg.kern_start, cfg.kern_end, entry.addr) or utils.is_in_range(cfg.kern_start, cfg.kern_end, entry.addr + entry.len)) {
+                    continue;
+                }
+                if (entry.addr == 0) {
+                    //todo(shahzad)!!!: this is very bad and should be fixed
+                    mem_map_entry.offset += 4;
+                }
+                try self.free_list.append(mem_map_entry);
             }
         }
 
         // note(shahzad): ik this config should be comptime but idk the memory map provided by the boot loader at comptime
         pub fn allocator(self: *Self, cfg: config) !std.mem.Allocator {
             // note(shahzad): idk how to compress these two in a single line
-            const mmap_ptr: [*]multiboot.multiboot_memory_map_t = @ptrFromInt(cfg.multiboot_memory_map);
             self.free_list = std.ArrayList(memory_map_entry).init(free_list_fixed_buff_alloc);
-            try self.free_list_from_multiboot_mem_map(mmap_ptr[0..cfg.multiboot_memory_map_len]);
+            try self.free_list_from_multiboot_mem_map(cfg);
             self.used_list = std.ArrayList(memory_map_entry).init(used_list_fixed_buff_alloc);
 
             return .{
