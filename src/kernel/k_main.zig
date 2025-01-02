@@ -7,7 +7,7 @@ const isr = @import("./arch/i686/interrupts/isr.zig");
 const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
-const allocator = @import("./arch/common/k_alloc.zig");
+const k_alloc = @import("./arch/common/k_alloc.zig");
 const is_data_ready = uart.is_data_ready;
 const hacks = @import("./debug/hacks.zig");
 const csrc = hacks.csrc;
@@ -15,6 +15,7 @@ const csrc = hacks.csrc;
 const multiboot = @import("./multiboot.zig");
 
 const builtin = std.builtin;
+var global_allocator: k_alloc.arena_like_allocator() = undefined;
 
 pub const std_options = .{
     .log_level = .debug,
@@ -55,29 +56,20 @@ fn setup_gdt() void {
 extern const _kern_start: i32;
 extern const _kern_end: i32;
 
-//todo(shahzad): please impl an alloc or we die
-fn setup_interrupts() void {
-    // todo(shahzad): impl allocator
-    const table = struct {
-        var idt_offset_table: [256]idt.gate = undefined;
-    };
-    const idt_table = idt.new_default(&table.idt_offset_table);
+fn setup_interrupts(allocator: std.mem.Allocator) !void {
+    const idt_offset_table = try allocator.alloc(idt.gate, 256);
+    const idt_table = idt.new_default(idt_offset_table);
     idt.init(&idt_table);
 }
-
-export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) void {
+fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.Allocator {
     const kern_start = @intFromPtr(&_kern_start);
     const kern_end = @intFromPtr(&_kern_end);
     const multiboot_mem_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t);
-    const ret = uart.init();
-    if (ret == false) {
-        return;
-    }
 
-    // normally you would give the config to the function while creating the type but
-    // as it is comptime we give it to allocator
-    var kalloc = allocator.arena_like_allocator(){};
-    const allc = kalloc.allocator(.{
+    // note(shahzad): this is allocated on the stack so after this function ends all of our memory
+    // mapping goes to shit, idk why i wrote it this way :skull
+    global_allocator = k_alloc.arena_like_allocator(){};
+    const allocator = global_allocator.allocator(.{
         .multiboot_memory_map_len = multiboot_mem_map_len,
         .multiboot_memory_map = multiboot_info.mmap_addr,
         .kern_start = kern_start,
@@ -85,16 +77,25 @@ export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) 
     }) catch |err| {
         std.debug.panic("{} failed to initialize allocator: {any}\n", .{ csrc(@src()), err });
     };
+    return allocator;
+}
+export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) void {
+    const ret = uart.init();
+    if (ret == false) {
+        return;
+    }
+    const kern_alloc = create_kernel_allocator(multiboot_info);
 
-    const temp1 = allc.alloc(u32, 32) catch |e|
+    const temp1 = kern_alloc.alloc(u32, 32) catch |e|
         {
         std.debug.panic("{any}\n", .{e});
     };
-
-    const temp2 = allc.alloc(u32, 32) catch |e|
+    _ = temp1; // autofix
+    const temp2 = kern_alloc.alloc(u32, 32) catch |e|
         {
         std.debug.panic("{any}\n", .{e});
     };
-    allc.free(temp1);
-    allc.free(temp2);
+    _ = temp2; // autofix
+    // kern_alloc.free(temp1);
+    // kern_alloc.free(temp2);
 }

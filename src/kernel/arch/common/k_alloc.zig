@@ -23,6 +23,7 @@ pub fn arena_like_allocator() type {
     return struct {
         free_list: std.ArrayList(memory_map_entry) = undefined,
         used_list: std.ArrayList(memory_map_entry) = undefined,
+        is_initialized: bool = false,
 
         var free_list_buffer: [256 * @sizeOf(memory_map_entry)]u8 = undefined;
         var used_list_buffer: [256 * @sizeOf(memory_map_entry)]u8 = undefined;
@@ -34,6 +35,16 @@ pub fn arena_like_allocator() type {
         var used_list_fix_buf_alloc = std.heap.FixedBufferAllocator.init(&used_list_buffer);
 
         const Self = @This();
+        pub fn current_allocator(self: Self) std.mem.Allocator {
+            return .{
+                .ptr = self,
+                .vtable = &.{
+                    .alloc = alloc,
+                    .resize = resize,
+                    .free = free,
+                },
+            };
+        }
 
         fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
             _ = ctx;
@@ -170,14 +181,20 @@ pub fn arena_like_allocator() type {
                 try self.free_list.append(mem_map_entry);
             }
         }
-
-        // note(shahzad): ik this config should be comptime but idk the memory map provided by the boot loader at comptime
-        pub fn allocator(self: *Self, cfg: config) !std.mem.Allocator {
-            // note(shahzad): idk how to compress these two in a single line
+        fn init(self: *Self, cfg: config) !void {
             self.free_list = std.ArrayList(memory_map_entry).init(free_list_fixed_buff_alloc);
             try self.free_list_from_multiboot_mem_map(cfg);
             self.used_list = std.ArrayList(memory_map_entry).init(used_list_fixed_buff_alloc);
+            self.is_initialized = true;
+        }
 
+        // note(shahzad): ik this config should be comptime but idk the memory map provided by the boot loader at comptime
+        pub fn allocator(self: *Self, cfg: config) !std.mem.Allocator {
+            if (self.is_initialized == false) {
+                try self.init(cfg);
+            }
+
+            // note(shahzad): idk how to compress these two in a single line
             return .{
                 .ptr = self,
                 .vtable = &.{
