@@ -79,23 +79,17 @@ fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.
     };
     return allocator;
 }
-export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) void {
-    const ret = uart.init();
-    if (ret == false) {
-        return;
-    }
-    const kern_alloc = create_kernel_allocator(multiboot_info);
+fn init(allocator: std.mem.Allocator) !void {
+    pic.init();
+    setup_gdt();
+    try setup_interrupts(allocator);
+}
 
-    const temp1 = kern_alloc.alloc(u32, 32) catch |e|
-        {
-        std.debug.panic("{any}\n", .{e});
+export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
+    uart.init();
+    const kern_alloc = create_kernel_allocator(multiboot_info);
+    init(kern_alloc) catch |err| {
+        std.debug.panic("failed to initialize kernel {}", .{err});
     };
-    _ = temp1; // autofix
-    const temp2 = kern_alloc.alloc(u32, 32) catch |e|
-        {
-        std.debug.panic("{any}\n", .{e});
-    };
-    _ = temp2; // autofix
-    // kern_alloc.free(temp1);
-    // kern_alloc.free(temp2);
+    while (true) {}
 }

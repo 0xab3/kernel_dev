@@ -43,7 +43,7 @@ const LINE_STATUS_REGISTER = COM1 + 5;
 const THRE = 0x20;
 
 // todo(shahzad): save state of this shit
-pub fn init() bool {
+pub fn init() void {
     outb(INTERRUPT_ENABLE_REGISTER, 0x00); // Disable all interrupts
 
     // NOTE: To set the divisor to the controller:
@@ -64,13 +64,12 @@ pub fn init() bool {
 
     // Check if serial is faulty (i.e: not same byte as sent)
     if (inb(COM1 + 0) != 0xAE) {
-        return false;
+        @panic("unable to enable uart");
     }
 
     // If serial is not faulty set it in normal operation mode
     // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
     outb(MODEM_CONTROL_REGISTER, 0x0B);
-    return true;
 }
 
 fn is_transmitter_holding_register() bool {

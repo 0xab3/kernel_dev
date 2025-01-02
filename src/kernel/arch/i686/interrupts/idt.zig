@@ -56,7 +56,8 @@ fn new(size: u16, offset: *const gate_t) *gate_t {
     return .{};
 }
 
-pub fn new_default(idt_offset_table: *[256]gate) description {
+// note(shahzad): 256 interrupts possible
+pub fn new_default(idt_offset_table: []gate) description {
     for (0..256) |i| {
         idt_offset_table[i] = gate_new(@intFromPtr(&isr.general_isr), 0x8, gate_t.interrupt_gate_32, 0x00);
     }
