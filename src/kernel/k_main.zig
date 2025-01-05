@@ -8,6 +8,7 @@ const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
 const k_alloc = @import("./arch/common/k_alloc.zig");
+const pre_kernel_paging = @import("./arch/i686/memory/pre_kernel_paging.zig");
 const is_data_ready = uart.is_data_ready;
 const hacks = @import("./debug/hacks.zig");
 const csrc = hacks.csrc;
@@ -86,7 +87,11 @@ fn init(allocator: std.mem.Allocator) !void {
 }
 
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
+    pre_kernel_paging.init();
     uart.init();
+    std.log.debug("KERNEL START {}", .{&_kern_start});
+    std.log.debug("KERNEL END {}", .{&_kern_end});
+    // note(shahzad): allocator is useless as we will be switching to higher half kernel
     const kern_alloc = create_kernel_allocator(multiboot_info);
     init(kern_alloc) catch |err| {
         std.debug.panic("failed to initialize kernel {}", .{err});
