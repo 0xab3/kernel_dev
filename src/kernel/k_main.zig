@@ -8,14 +8,15 @@ const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
 const k_alloc = @import("./arch/common/k_alloc.zig");
-const pre_kernel_paging = @import("./arch/i686/memory/pre_kernel_paging.zig");
 const is_data_ready = uart.is_data_ready;
 const hacks = @import("./debug/hacks.zig");
 const csrc = hacks.csrc;
-
 const multiboot = @import("./multiboot.zig");
+const builtin = @import("builtin");
+comptime {
+    _ = @import("./arch/i686/pre_kernel.zig");
+}
 
-const builtin = std.builtin;
 var global_allocator: k_alloc.arena_like_allocator() = undefined;
 
 pub const std_options = .{
@@ -32,7 +33,7 @@ pub fn k_hlt() noreturn {
 }
 
 // todo(shahzad): add stack trace?
-pub fn panic(msg: []const u8, _: ?*builtin.StackTrace, _: ?usize) noreturn {
+pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     @setCold(true);
     stdout_writer.print("panic: {s} \n", .{msg});
     k_hlt();
@@ -54,8 +55,8 @@ fn setup_gdt() void {
     gdt.init(&gdt_table);
 }
 
-extern const _kern_start: i32;
-extern const _kern_end: i32;
+extern const KERNEL_START: i32;
+extern const KERNEL_END: i32;
 
 fn setup_interrupts(allocator: std.mem.Allocator) !void {
     const idt_offset_table = try allocator.alloc(idt.gate, 256);
@@ -63,8 +64,8 @@ fn setup_interrupts(allocator: std.mem.Allocator) !void {
     idt.init(&idt_table);
 }
 fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.Allocator {
-    const kern_start = @intFromPtr(&_kern_start);
-    const kern_end = @intFromPtr(&_kern_end);
+    const kern_start = @intFromPtr(&KERNEL_START);
+    const kern_end = @intFromPtr(&KERNEL_END);
     const multiboot_mem_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t);
 
     // note(shahzad): this is allocated on the stack so after this function ends all of our memory
@@ -87,10 +88,9 @@ fn init(allocator: std.mem.Allocator) !void {
 }
 
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
-    pre_kernel_paging.init();
     uart.init();
-    std.log.debug("KERNEL START {}", .{&_kern_start});
-    std.log.debug("KERNEL END {}", .{&_kern_end});
+    std.log.debug("KERNEL START {}", .{&KERNEL_START});
+    std.log.debug("KERNEL END {}", .{&KERNEL_END});
     // note(shahzad): allocator is useless as we will be switching to higher half kernel
     const kern_alloc = create_kernel_allocator(multiboot_info);
     init(kern_alloc) catch |err| {

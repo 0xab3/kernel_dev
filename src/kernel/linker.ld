@@ -18,33 +18,49 @@ SECTIONS
 	   work around this issue. This does not use that feature, so 2M was
 	   chosen as a safer option than the traditional 1M. */
 	. = 2M;
-  _kern_start = .;
+  KERNEL_START = .;
+  KERNEL_VIRT_START = 0xC0000000;
 
-	/* First put the multiboot header, as it is required to be put very early
-	   in the image or the bootloader won't recognize the file format.
-	   Next we'll put the .text section. */
-	.text : ALIGN(4K) {
-      KEEP(*(.multiboot))
-      *(.text)
+  .data.multiboot : ALIGN(4K) {
+    *(.data.multiboot)
+  }
+
+  .text.multiboot : ALIGN(4K) {
+    *(.text.multiboot)
+  }
+
+  .paging.rodata : ALIGN(4K){
+    *(.paging.rodata)
+  }
+  . += KERNEL_VIRT_START;
+
+  .text ALIGN (4K) : AT (ADDR (.text) - KERNEL_VIRT_START)
+	{
+		*(.text)
 	}
 
-	/* Read-only data. */
-	.rodata : ALIGN(4K) {
+	/* Read Only data. */
+	.rodata ALIGN (4K) : AT (ADDR (.rodata) - KERNEL_VIRT_START)
+	{
 		*(.rodata)
 	}
 
-	/* Read-write data (initialized) */
-	.data : ALIGN(4K) {
+	/* Read Write data. (Initialized) */
+	.data ALIGN (4K) : AT (ADDR (.data) - KERNEL_VIRT_START)
+	{
 		*(.data)
 	}
 
-	/* Read-write data (uninitialized) and stack */
-	.bss : ALIGN(4K) {
-		*(COMMON)
-		*(.bss)
+	/* Read Write data. (Uninitialized) */
+	.bss ALIGN (4K) : AT (ADDR (.bss) - KERNEL_VIRT_START)
+	{
+    KERNEL_STACK_START = .;
+		KEEP(*(.bss))
+    KERNEL_STACK_END = .;
 	}
-  _kern_end = .;
 
+  KERNEL_END = .;
+  KERNEL_VIRT_END = KERNEL_END + KERNEL_VIRT_START;
 
 	/* The compiler may produce other sections, by default it will put them in
 	   a segment with the same name. Simply add stuff here as needed. */
