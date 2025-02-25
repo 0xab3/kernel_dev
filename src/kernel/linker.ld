@@ -36,30 +36,41 @@ SECTIONS
 
   .text ALIGN (4K) : AT (ADDR (.text) - KERNEL_VIRT_START)
 	{
+    KERNEL_TEXT_START = .;
 		*(.text)
+    KERNEL_TEXT_END = .;
 	}
 
 	/* Read Only data. */
 	.rodata ALIGN (4K) : AT (ADDR (.rodata) - KERNEL_VIRT_START)
 	{
+    KERNEL_RO_START = .;
 		*(.rodata)
+    KERNEL_RO_END = .;
 	}
 
 	/* Read Write data. (Initialized) */
 	.data ALIGN (4K) : AT (ADDR (.data) - KERNEL_VIRT_START)
 	{
+    KERNEL_DATA_START = .;
 		*(.data)
+    KERNEL_DATA_END = .;
 	}
 
 	/* Read Write data. (Uninitialized) */
 	.bss ALIGN (4K) : AT (ADDR (.bss) - KERNEL_VIRT_START)
 	{
-    KERNEL_STACK_START = .;
 		KEEP(*(.bss))
-    KERNEL_STACK_END = .;
 	}
 
-  KERNEL_END = .;
+  .bss.stack ALIGN(4K) : AT (ADDR(.bss.stack) - KERNEL_VIRT_START) 
+  {
+    KERNEL_STACK_START = .;
+		KEEP(*(.bss.stack))
+    KERNEL_STACK_END = .;
+  }
+
+  KERNEL_END = . - KERNEL_VIRT_START;
   KERNEL_VIRT_END = KERNEL_END + KERNEL_VIRT_START;
 
 	/* The compiler may produce other sections, by default it will put them in

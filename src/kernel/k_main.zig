@@ -17,6 +17,7 @@ comptime {
     _ = @import("./arch/i686/pre_kernel.zig");
 }
 
+const console = @import("console.zig");
 var global_allocator: k_alloc.arena_like_allocator() = undefined;
 
 pub const std_options = .{
@@ -58,10 +59,10 @@ fn setup_gdt() void {
 extern const KERNEL_START: i32;
 extern const KERNEL_END: i32;
 
-fn setup_interrupts(allocator: std.mem.Allocator) !void {
+fn setup_interrupts(allocator: *std.mem.Allocator) !void {
     const idt_offset_table = try allocator.alloc(idt.gate, 256);
     const idt_table = idt.new_default(idt_offset_table);
-    idt.init(&idt_table);
+    idt.init(@intFromPtr(&idt_table));
 }
 fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.Allocator {
     const kern_start = @intFromPtr(&KERNEL_START);
@@ -81,20 +82,42 @@ fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.
     };
     return allocator;
 }
-fn init(allocator: std.mem.Allocator) !void {
+var kernel_allocator_buffer: [4 * 1024 * 1024]u8 = undefined;
+fn init(allocator: *std.mem.Allocator) !void {
     pic.init();
     setup_gdt();
     try setup_interrupts(allocator);
 }
 
+pub export fn basic_log() noreturn {
+    const buffer: [*]u16 = @ptrFromInt(0xb8000);
+    buffer[0] = 'b' | (1 << 8);
+    buffer[1] = 'l' | (1 << 8);
+    buffer[2] = 'y' | (1 << 8);
+    buffer[3] = 'a' | (1 << 8);
+    buffer[4] = 't' | (1 << 8);
+    k_hlt();
+}
+fn int(comptime num: u32) void {
+    asm volatile (
+        \\ int %[num]
+        :
+        : [num] "n" (num),
+    );
+}
+
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
+    _ = multiboot_info; // autofix
+    var temp_alloc = std.heap.FixedBufferAllocator.init(&kernel_allocator_buffer);
+    var alloc = temp_alloc.allocator();
     uart.init();
     std.log.debug("KERNEL START {}", .{&KERNEL_START});
     std.log.debug("KERNEL END {}", .{&KERNEL_END});
-    // note(shahzad): allocator is useless as we will be switching to higher half kernel
-    const kern_alloc = create_kernel_allocator(multiboot_info);
-    init(kern_alloc) catch |err| {
-        std.debug.panic("failed to initialize kernel {}", .{err});
+
+    init(&alloc) catch |err| {
+        std.debug.panic("wot da heall man {}\n", .{err});
     };
+    console.write("wot da heall\n");
+    // int(0x80);
     while (true) {}
 }

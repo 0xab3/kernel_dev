@@ -1,4 +1,6 @@
 //note(shahzad): stolen from https://wiki.osdev.org/Zig_Bare_Bones (i am not writing all that)
+const std = @import("std");
+const root = @import("root");
 const fmt = @import("std").fmt;
 const Writer = @import("std").io.Writer;
 
@@ -28,7 +30,7 @@ pub const ConsoleColors = enum(u8) {
 var row: usize = 0;
 var column: usize = 0;
 var color = vgaEntryColor(ConsoleColors.LightGray, ConsoleColors.Black);
-var buffer = @as([*]volatile u16, @ptrFromInt(0xB8000));
+var buffer = @as([*]volatile u16, @ptrFromInt(0xB8000 + root.KERNEL_VIRT_START_ADDR));
 
 fn vgaEntryColor(fg: ConsoleColors, bg: ConsoleColors) u8 {
     return @intFromEnum(fg) | (@intFromEnum(bg) << 4);
@@ -53,7 +55,7 @@ pub fn clear() void {
 }
 
 pub fn putCharAt(c: u8, new_color: u8, x: usize, y: usize) void {
-    const index = y * VGA_WIDTH + x;
+    const index: usize = y * VGA_WIDTH + x;
     buffer[index] = vgaEntry(c, new_color);
 }
 

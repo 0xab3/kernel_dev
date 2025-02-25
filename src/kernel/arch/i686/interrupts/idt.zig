@@ -1,7 +1,7 @@
 const std = @import("std");
 const stdout_writer = @import("../../../stdout_writer.zig").stdout_writer;
 const isr = @import("./isr.zig");
-pub extern fn idt_init(arg: *const description) callconv(.Stdcall) void;
+pub extern fn idt_init(arg: u32) callconv(.Stdcall) void;
 
 //note(shahzad): idk why i am calling this function init but it is what it is
 pub const init = idt_init;

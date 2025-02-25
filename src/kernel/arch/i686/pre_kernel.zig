@@ -1,3 +1,4 @@
+const root = @import("root");
 const DIRECTORY_PRESENT: u32 = 0b1;
 const DIRECTORY_READ_WRITE: u32 = 0b10;
 const DIRECTORY_USER_SUPERVISOR: u32 = 0b100;
@@ -9,6 +10,7 @@ const KERNEL_VIRT_START: u32 = 0xC0000000;
 pub export const paging_rodata: [1024]u32 align(4096) linksection(".paging.rodata") = blk: {
     @setEvalBranchQuota(1024);
     var PDE: [1024]u32 align(4096) = undefined;
+    @memset(&PDE, 0);
     PDE[0] = DIRECTORY_PRESENT | DIRECTORY_READ_WRITE | DIRECTORY_PAGE_SIZE_4M;
 
     var idx = 0;
@@ -21,7 +23,8 @@ pub export const paging_rodata: [1024]u32 align(4096) linksection(".paging.rodat
     break :blk PDE;
 };
 
-export const kernel_stack: [1024 * 16]u8 align(16) linksection(".bss") = undefined;
+const KERNEL_STACK_SIZE = 1024 * 16;
+export const kernel_stack: [KERNEL_STACK_SIZE]u8 align(16) linksection(".bss.stack") = undefined;
 extern const KERNEL_STACK_START: u32;
 extern const KERNEL_STACK_END: u32;
 
@@ -49,18 +52,17 @@ export fn _start() linksection(".text.multiboot") callconv(.Naked) noreturn {
 
 export fn stage_1() callconv(.Naked) noreturn {
     // remove the kernel 1:1 mapping
-    asm volatile ("invlpg (0)");
-    asm volatile (
-        \\ mov KERNEL_STACK_END, %ebp
-        \\ mov KERNEL_STACK_END, %esp
+    // asm volatile ("invlpg (0)");
+    const multiboot_info_ptr = asm volatile ("mov %eax, %[multiboot_info_ptr]"
+        : [multiboot_info_ptr] "=r" (-> u32),
     );
-    const buffer: [*]u16 = @ptrFromInt(0xb8000);
-    buffer[0] = 'b' | (1 << 8);
-    buffer[1] = 'l' | (1 << 8);
-    buffer[2] = 'y' | (1 << 8);
-    buffer[3] = 'a' | (1 << 8);
-    buffer[4] = 't' | (1 << 8);
     asm volatile (
-        \\hlt
+        \\.extern KERNEL_STACK_END
+        \\mov $KERNEL_STACK_END, %esp
+        \\mov %esp, %ebp
+        \\push %[multiboot_info_ptr]
+        \\call kernel_main
+        :
+        : [multiboot_info_ptr] "N{dx}" (multiboot_info_ptr),
     );
 }
