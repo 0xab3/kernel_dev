@@ -5,7 +5,7 @@ const log = std.log;
 
 pub fn uart_log_func(
     comptime message_level: log.Level,
-    comptime scope: @Type(.enum_literal ),
+    comptime scope: @Type(.EnumLiteral),
     comptime format: []const u8,
     args: anytype,
 ) void {

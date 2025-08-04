@@ -7,18 +7,18 @@ const isr = @import("./arch/i686/interrupts/isr.zig");
 const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
-const k_alloc = @import("./arch/common/k_alloc.zig");
 const is_data_ready = uart.is_data_ready;
 const hacks = @import("./debug/hacks.zig");
 const csrc = hacks.csrc;
 const multiboot = @import("./multiboot.zig");
+const paging = @import("./arch/i686/memory/paging.zig");
 const builtin = @import("builtin");
 comptime {
     _ = @import("./arch/i686/pre_kernel.zig");
 }
+pub const KERNEL_VIRT_OFFSET = 0xC0000000;
 
 const console = @import("console.zig");
-var global_allocator: k_alloc.arena_like_allocator() = undefined;
 
 pub const std_options: std.Options = .{
     .log_level = .debug,
@@ -58,29 +58,21 @@ fn setup_gdt() void {
 
 extern const KERNEL_START: i32;
 extern const KERNEL_END: i32;
+extern const KERNEL_VIRT_START: i32;
+extern const KERNEL_VIRT_END: i32;
+extern const KERNEL_TEXT_START: i32;
+extern const KERNEL_TEXT_END: i32;
+extern const KERNEL_RO_START: i32;
+extern const KERNEL_RO_END: i32;
+extern const KERNEL_DATA_START: i32;
+extern const KERNEL_DATA_END: i32;
+extern const KERNEL_STACK_START: i32;
+extern const KERNEL_STACK_END: i32;
 
 fn setup_interrupts(allocator: *std.mem.Allocator) !void {
     const idt_offset_table = try allocator.alloc(idt.gate, 256);
     const idt_table = idt.new_default(idt_offset_table);
     idt.init(@intFromPtr(&idt_table));
-}
-fn create_kernel_allocator(multiboot_info: *multiboot.multiboot_info_t) std.mem.Allocator {
-    const kern_start = @intFromPtr(&KERNEL_START);
-    const kern_end = @intFromPtr(&KERNEL_END);
-    const multiboot_mem_map_len = multiboot_info.mmap_length / @sizeOf(multiboot.multiboot_memory_map_t);
-
-    // note(shahzad): this is allocated on the stack so after this function ends all of our memory
-    // mapping goes to shit, idk why i wrote it this way :skull
-    global_allocator = k_alloc.arena_like_allocator(){};
-    const allocator = global_allocator.allocator(.{
-        .multiboot_memory_map_len = multiboot_mem_map_len,
-        .multiboot_memory_map = multiboot_info.mmap_addr,
-        .kern_start = kern_start,
-        .kern_end = kern_end,
-    }) catch |err| {
-        std.debug.panic("{} failed to initialize allocator: {any}\n", .{ csrc(@src()), err });
-    };
-    return allocator;
 }
 var kernel_allocator_buffer: [4 * 1024 * 1024]u8 = undefined;
 fn init(allocator: *std.mem.Allocator) !void {
@@ -105,9 +97,45 @@ fn int(comptime num: u32) void {
         : [num] "n" (num),
     );
 }
+const memMap = struct {
+    kernel_start: usize,
+    kernel_end: usize,
+    kernel_virt_start: usize,
+    kernel_virt_end: usize,
+    kernel_text_start: usize,
+    kernel_text_end: usize,
+    kernel_ro_start: usize,
+    kernel_ro_end: usize,
+    kernel_data_start: usize,
+    kernel_data_end: usize,
+    kernel_stack_start: usize,
+    kernel_stack_end: usize,
+    const Self = @This();
+    var instance: Self = undefined;
+
+    pub fn init() Self {
+        memMap.instance = .{
+            .kernel_start = @intFromPtr(&KERNEL_START),
+            .kernel_end = @intFromPtr(&KERNEL_END),
+            .kernel_virt_start = @intFromPtr(&KERNEL_VIRT_START),
+            .kernel_virt_end = @intFromPtr(&KERNEL_VIRT_END),
+            .kernel_text_start = @intFromPtr(&KERNEL_TEXT_START),
+            .kernel_text_end = @intFromPtr(&KERNEL_TEXT_END),
+            .kernel_ro_start = @intFromPtr(&KERNEL_RO_START),
+            .kernel_ro_end = @intFromPtr(&KERNEL_RO_END),
+            .kernel_data_start = @intFromPtr(&KERNEL_DATA_START),
+            .kernel_data_end = @intFromPtr(&KERNEL_DATA_END),
+            .kernel_stack_start = @intFromPtr(&KERNEL_STACK_START),
+            .kernel_stack_end = @intFromPtr(&KERNEL_STACK_END),
+        };
+        return memMap.instance;
+    }
+};
 
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
     _ = multiboot_info; // autofix
+
+    const mem_map = memMap.init();
     var temp_alloc = std.heap.FixedBufferAllocator.init(&kernel_allocator_buffer);
     var alloc = temp_alloc.allocator();
     uart.init();
@@ -118,6 +146,7 @@ export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) 
         std.debug.panic("wot da heall man {}\n", .{err});
     };
     console.write("wot da heall\n");
-    // int(0x80);
+    paging.init(mem_map.kernel_start, mem_map.kernel_end, mem_map.kernel_virt_start, mem_map.kernel_virt_start);
+
     while (true) {}
 }

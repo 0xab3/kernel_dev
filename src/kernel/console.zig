@@ -27,10 +27,11 @@ pub const ConsoleColors = enum(u8) {
     White = 15,
 };
 
+const KERNEL_VIRT_START = 0xC0000000;
 var row: usize = 0;
 var column: usize = 0;
 var color = vgaEntryColor(ConsoleColors.LightGray, ConsoleColors.Black);
-var buffer = @as([*]volatile u16, @ptrFromInt(0xB8000 + root.KERNEL_VIRT_START_ADDR));
+var buffer = @as([*]volatile u16, @ptrFromInt(0xB8000 + KERNEL_VIRT_START));
 
 fn vgaEntryColor(fg: ConsoleColors, bg: ConsoleColors) u8 {
     return @intFromEnum(fg) | (@intFromEnum(bg) << 4);

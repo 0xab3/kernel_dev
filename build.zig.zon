@@ -1,9 +1,8 @@
 .{
-    .name = .hello_world,
+    .name = "hello_world",
 
     .version = "0.0.0",
 
-    .fingerprint = 0xf73eae91cdb19fb7,
     .dependencies = .{},
 
     .paths = .{

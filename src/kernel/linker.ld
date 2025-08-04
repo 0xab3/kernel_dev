@@ -19,7 +19,8 @@ SECTIONS
 	   chosen as a safer option than the traditional 1M. */
 	. = 2M;
   KERNEL_START = .;
-  KERNEL_VIRT_START = 0xC0000000;
+  KERNEL_VIRT_OFFSET = 0xC0000000;
+  KERNEL_VIRT_START = KERNEL_VIRT_OFFSET;
 
   .data.multiboot : ALIGN(4K) {
     *(.data.multiboot)
@@ -32,9 +33,9 @@ SECTIONS
   .paging.rodata : ALIGN(4K){
     *(.paging.rodata)
   }
-  . += KERNEL_VIRT_START;
+  . += KERNEL_VIRT_OFFSET;
 
-  .text ALIGN (4K) : AT (ADDR (.text) - KERNEL_VIRT_START)
+  .text ALIGN (4K) : AT (ADDR (.text) - KERNEL_VIRT_OFFSET)
 	{
     KERNEL_TEXT_START = .;
 		*(.text)
@@ -42,7 +43,7 @@ SECTIONS
 	}
 
 	/* Read Only data. */
-	.rodata ALIGN (4K) : AT (ADDR (.rodata) - KERNEL_VIRT_START)
+	.rodata ALIGN (4K) : AT (ADDR (.rodata) - KERNEL_VIRT_OFFSET)
 	{
     KERNEL_RO_START = .;
 		*(.rodata)
@@ -50,7 +51,7 @@ SECTIONS
 	}
 
 	/* Read Write data. (Initialized) */
-	.data ALIGN (4K) : AT (ADDR (.data) - KERNEL_VIRT_START)
+	.data ALIGN (4K) : AT (ADDR (.data) - KERNEL_VIRT_OFFSET)
 	{
     KERNEL_DATA_START = .;
 		*(.data)
@@ -58,20 +59,21 @@ SECTIONS
 	}
 
 	/* Read Write data. (Uninitialized) */
-	.bss ALIGN (4K) : AT (ADDR (.bss) - KERNEL_VIRT_START)
+	.bss ALIGN (4K) : AT (ADDR (.bss) - KERNEL_VIRT_OFFSET)
 	{
 		KEEP(*(.bss))
 	}
 
-  .bss.stack ALIGN(4K) : AT (ADDR(.bss.stack) - KERNEL_VIRT_START) 
+  .bss.stack ALIGN(4K) : AT (ADDR(.bss.stack) - KERNEL_VIRT_OFFSET) 
   {
     KERNEL_STACK_START = .;
 		KEEP(*(.bss.stack))
     KERNEL_STACK_END = .;
   }
 
-  KERNEL_END = . - KERNEL_VIRT_START;
-  KERNEL_VIRT_END = KERNEL_END + KERNEL_VIRT_START;
+  KERNEL_VIRT_END = .;
+	KERNEL_END = . - KERNEL_VIRT_OFFSET;
+
 
 	/* The compiler may produce other sections, by default it will put them in
 	   a segment with the same name. Simply add stuff here as needed. */
