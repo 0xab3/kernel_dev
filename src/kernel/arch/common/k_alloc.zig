@@ -142,7 +142,6 @@ pub fn arena_like_allocator() type {
 
                 //check if kernel is part of the memory chunk
                 if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_start)) {
-                    @setCold(true);
                     const pre_kernel_memory: memory_map_entry = .{
                         .addr = mem_map_entry.addr,
                         .len = cfg.kern_start - mem_map_entry.addr,
@@ -154,7 +153,6 @@ pub fn arena_like_allocator() type {
                     }
                 }
                 if (utils.is_in_range(entry.addr, entry.addr + entry.len, cfg.kern_end)) {
-                    @setCold(true);
                     const post_kernel_memory: memory_map_entry = .{
                         .addr = cfg.kern_end,
                         .len = (mem_map_entry.addr + mem_map_entry.len) - cfg.kern_end,

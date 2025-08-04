@@ -9,36 +9,37 @@ const COM1 = 0x3F8;
 
 //note(shahzad): to send data to this port DLAB should be set to 0
 const INTERRUPT_ENABLE_REGISTER = COM1 + 0x1;
-// Bit 7-4	Bit 3	         Bit 2	                 Bit 1	                                Bit 0
-// Reserved	Modem Status	Receiver Line Status	Transmitter Holding Register Empty	Received Data Available
+
+// Bit 7-4      Bit 3           Bit 2                   Bit 1                                   Bit 0
+// Reserved     Modem Status    Receiver Line Status    Transmitter Holding Register Empty      Received Data Available
 
 const FIFO_CONTROL_REGISTER = COM1 + 0x2;
-// Bits 7-6	                Bits 5-4	Bit 3            Bit 2	                Bit 1	                Bit 0
-// Interrupt Trigger Level	Reserved	DMA Mode Select	 Clear Transmit FIFO	Clear Receive FIFO	Enable FIFO
+// Bits 7-6                   Bits 5-4    Bit 3              Bit 2                    Bit 1                 Bit 0
+// Interrupt Trigger Level    Reserved    DMA Mode Select    Clear Transmit FIFO      Clear Receive FIFO    Enable FIFO
 
 const LINE_CONTROL_REGISTER = COM1 + 0x3;
-//Divisor Latch Access Bit	Break Enable Bit	Parity Bits	Stop Bits	Data Bits
-//Bit 7	                        Bit 6	                Bits 5-3	Bit 2	        Bits 1-0
+//Divisor Latch Access Bit    Break Enable Bit    Parity Bits    Stop Bits    Data Bits
+//Bit 7                       Bit 6               Bits 5-3       Bit 2        Bits 1-0
 
 const MODEM_CONTROL_REGISTER = COM1 + 4;
-// 0	Data Terminal Ready (DTR)   Controls the Data Terminal Ready Pin
-// 1	Request to Send (RTS)	    Controls the Request to Send Pin
-// 2	Out 1	                    Controls a hardware pin (OUT1) which is unused in PC implementations
-// 3	Out 2	                    Controls a hardware pin (OUT2) which is used to enable the IRQ in PC implementations
-// 4	Loop	                    Provides a local loopback feature for diagnostic testing of the UART
-// 5	0	Unused
-// 6	0	Unused
-// 7	0	Unused
+// 0    Data Terminal Ready (DTR)    Controls the Data Terminal Ready Pin
+// 1    Request to Send (RTS)        Controls the Request to Send Pin
+// 2    Out 1                        Controls a hardware pin (OUT1) which is unused in PC implementations
+// 3    Out 2                        Controls a hardware pin (OUT2) which is used to enable the IRQ in PC implementations
+// 4    Loop                         Provides a local loopback feature for diagnostic testing of the UART
+// 5    0      Unused
+// 6    0      Unused
+// 7    0      Unused
 
 const LINE_STATUS_REGISTER = COM1 + 5;
-// 0    Data ready (DR)	        Set if there is data that can be read
-// 1	Overrun error (OE)	Set if there has been data lost
-// 2	Parity error (PE)	Set if there was an error in the transmission as detected by parity
-// 3	Framing error (FE)	Set if a stop bit was missing
-// 4	Break indicator (BI)	Set if there is a break in data input
-// 5	Transmitter holding register empty (THRE)	Set if the transmission buffer is empty (i.e. data can be sent)
-// 6	Transmitter empty (TEMT)	Set if the transmitter is not doing anything
-// 7	Impending Error	Set if there is an error with a word in the input buffer
+// 0    Data ready (DR)                              Set if there is data that can be read
+// 1    Overrun error (OE)                           Set if there has been data lost
+// 2    Parity error (PE)                            Set if there was an error in the transmission as detected by parity
+// 3    Framing error (FE)                           Set if a stop bit was missing
+// 4    Break indicator (BI)                         Set if there is a break in data input
+// 5    Transmitter holding register empty (THRE)    Set if the transmission buffer is empty (i.e. data can be sent)
+// 6    Transmitter empty (TEMT)                     Set if the transmitter is not doing anything
+// 7    Impending Error                              Set if there is an error with a word in the input buffer
 
 const THRE = 0x20;
 

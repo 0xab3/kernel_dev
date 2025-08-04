@@ -20,7 +20,7 @@ comptime {
 const console = @import("console.zig");
 var global_allocator: k_alloc.arena_like_allocator() = undefined;
 
-pub const std_options = .{
+pub const std_options: std.Options = .{
     .log_level = .debug,
     .logFn = log.uart_log_func,
 };
