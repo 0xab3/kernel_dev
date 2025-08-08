@@ -2,8 +2,8 @@
 const std = @import("std");
 const io = @import("../io/io.zig");
 const fmt = std.fmt;
-const outb = io.outb;
-const inb = io.inb;
+const out = io.out;
+const in = io.in;
 
 const COM1 = 0x3F8;
 
@@ -45,7 +45,7 @@ const THRE = 0x20;
 
 // todo(shahzad): save state of this shit
 pub fn init() void {
-    outb(INTERRUPT_ENABLE_REGISTER, 0x00); // Disable all interrupts
+    out(INTERRUPT_ENABLE_REGISTER, @as(u8, 0x00 )); // Disable all interrupts
 
     // NOTE: To set the divisor to the controller:
     //
@@ -53,32 +53,32 @@ pub fn init() void {
     // Send the least significant byte of the divisor value to [PORT + 0].
     // Send the most significant byte of the divisor value to [PORT + 1].
     // Clear the most significant bit of the Line Control Register.
-    outb(LINE_CONTROL_REGISTER, 0x80); // Enable DLAB (set baud rate divisor)
-    outb(COM1 + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
-    outb(COM1 + 1, 0x00); // (hi byte)
+    out(LINE_CONTROL_REGISTER, @as(u8, 0x80)); // Enable DLAB (set baud rate divisor)
+    out(COM1 + 0, @as(u8, 0x03)); // Set divisor to 3 (lo byte) 38400 baud
+    out(COM1 + 1, @as(u8, 0x00)); // (hi byte)
 
-    outb(LINE_CONTROL_REGISTER, 0x03); // clear DLAB, 8 bits, no parity, one stop bit
-    outb(FIFO_CONTROL_REGISTER, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
-    outb(MODEM_CONTROL_REGISTER, 0x0B); // IRQs enabled, RTS/DTR set
-    outb(MODEM_CONTROL_REGISTER, 0x1E); // Set in loopback mode, test the serial chip
-    outb(COM1 + 0, 0xAE); // Test serial chip (send byte 0xAE and check if serial returns same byte)
+    out(LINE_CONTROL_REGISTER, @as(u8, 0x03)); // clear DLAB, 8 bits, no parity, one stop bit
+    out(FIFO_CONTROL_REGISTER, @as(u8, 0xC7)); // Enable FIFO, clear them, with 14-byte threshold
+    out(MODEM_CONTROL_REGISTER, @as(u8, 0x0B)); // IRQs enabled, RTS/DTR set
+    out(MODEM_CONTROL_REGISTER, @as(u8, 0x1E)); // Set in loopback mode, test the serial chip
+    out(COM1 + 0, @as(u8, 0xAE)); // Test serial chip (send byte 0xAE and check if serial returns same byte)
 
     // Check if serial is faulty (i.e: not same byte as sent)
-    if (inb(COM1 + 0) != 0xAE) {
+    if (in(u8, COM1 + 0) != 0xAE) {
         @panic("unable to enable uart");
     }
 
     // If serial is not faulty set it in normal operation mode
     // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
-    outb(MODEM_CONTROL_REGISTER, 0x0B);
+    out(MODEM_CONTROL_REGISTER, @as(u8, 0x0B));
 }
 
 fn is_transmitter_holding_register() bool {
-    return (inb(LINE_STATUS_REGISTER) & THRE) != 0;
+    return (in(u8, LINE_STATUS_REGISTER) & THRE) != 0;
 }
 pub fn write(data: []const u8) void {
     while (is_transmitter_holding_register() == false) {}
     for (data) |byte| {
-        outb(COM1, byte);
+        out(COM1, @as(u8, byte));
     }
 }

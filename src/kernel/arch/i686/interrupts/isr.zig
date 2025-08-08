@@ -178,7 +178,7 @@ pub fn IRQ_0() callconv(.Interrupt) void {
 //IRQ_1: keyboard
 pub fn IRQ_1() callconv(.Interrupt) void {
     //todo(shahzad): read from the inner function instead of here
-    const scancode = io.inb(0x60);
+    const scancode = io.in(u8,0x60);
     keyboard.translate_key(scancode);
     pic.send_eoi(1);
 }
