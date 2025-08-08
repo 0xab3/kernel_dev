@@ -2,7 +2,7 @@ const std = @import("std");
 const console_writer = @import("../kernel/console.zig");
 const uart_writer = @import("../kernel/arch/i686/serial/uart.zig");
 const fmt = std.fmt;
-const std_writer_config = struct {
+const StdWriterConfig = struct {
     console_out: bool = true,
     uart_out: bool = true,
 };
@@ -15,13 +15,13 @@ pub fn uart_writer_cb(_: void, string: []const u8) error{}!usize {
     uart_writer.write(string);
     return string.len;
 }
-pub const out_writer = struct {
+pub const OutWriter = struct {
     console_writer: ?*const std.io.Writer(void, error{}, console_writer_cb),
     uart_writer: ?*const std.io.Writer(void, error{}, uart_writer_cb),
 
     // todo(shahzad): use allocator ig idk tho
-    pub fn init(config: std_writer_config) out_writer {
-        var writer = out_writer{ .console_writer = null, .uart_writer = null };
+    pub fn init(config: StdWriterConfig) OutWriter {
+        var writer = OutWriter{ .console_writer = null, .uart_writer = null };
         if (config.console_out) {
             writer.console_writer = &std.io.Writer(
                 void,
@@ -35,7 +35,7 @@ pub const out_writer = struct {
         return writer;
     }
 
-    pub fn print(self: out_writer, comptime format: []const u8, args: anytype) void {
+    pub fn print(self: OutWriter, comptime format: []const u8, args: anytype) void {
         if (self.console_writer) |writer| {
             std.fmt.format(writer.*, format, args) catch unreachable;
         }
@@ -45,4 +45,4 @@ pub const out_writer = struct {
     }
 };
 //todo(shahzad): rename this shit
-pub const stdout_writer = out_writer.init(.{ .console_out = true, .uart_out = true });
+pub const stdout_writer = OutWriter.init(.{ .console_out = true, .uart_out = true });

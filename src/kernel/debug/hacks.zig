@@ -2,7 +2,7 @@
 
 const std = @import("std");
 // note(shahzad): wrapper over std.builtin.SourceLocation
-const custom_source = struct {
+const CustomSource = struct {
     src: std.builtin.SourceLocation,
     pub fn format(
         self: @This(),
@@ -16,6 +16,6 @@ const custom_source = struct {
         try writer.print("{s}:{}", .{ self.src.file, self.src.line });
     }
 };
-pub fn csrc(src: std.builtin.SourceLocation) custom_source {
-    return custom_source{ .src = src };
+pub fn csrc(src: std.builtin.SourceLocation) CustomSource {
+    return CustomSource{ .src = src };
 }

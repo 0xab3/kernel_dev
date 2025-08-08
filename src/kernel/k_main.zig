@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const gdt = @import("./arch/i686/gdt.zig");
 const uart = @import("./arch/i686/serial/uart.zig");
 const log = @import("./debug/log.zig");
@@ -7,12 +8,9 @@ const isr = @import("./arch/i686/interrupts/isr.zig");
 const idt = @import("./arch/i686/interrupts/idt.zig");
 const io = @import("./arch/i686/io/io.zig");
 const pic = @import("./arch/i686/interrupts/pic.zig");
-const is_data_ready = uart.is_data_ready;
-const hacks = @import("./debug/hacks.zig");
-const csrc = hacks.csrc;
+const csrc = @import("./debug/hacks.zig").csrc;
 const multiboot = @import("./multiboot.zig");
 const paging = @import("./arch/i686/memory/paging.zig");
-const builtin = @import("builtin");
 comptime {
     _ = @import("./arch/i686/pre_kernel.zig");
 }
@@ -42,17 +40,17 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
 
 fn setup_gdt() void {
     const gdt_0: u64 = 0;
-    const gdt_1: u64 = gdt.entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc });
-    const gdt_2: u64 = gdt.entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x92, .flags = 0xc });
+    const gdt_1: u64 = gdt.Entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x9A, .flags = 0xc });
+    const gdt_2: u64 = gdt.Entry.to_anal_format(.{ .base = 0x00, .limit = 0xfffff, .access_byte = 0x92, .flags = 0xc });
     //note(shahzad): equivalent to static keyword in c
-    const table = struct {
+    const Table = struct {
         var table: [3]u64 = undefined;
     };
-    table.table[0] = gdt_0;
-    table.table[1] = gdt_1;
-    table.table[2] = gdt_2;
+    Table.table[0] = gdt_0;
+    Table.table[1] = gdt_1;
+    Table.table[2] = gdt_2;
 
-    var gdt_table: gdt.description = .{ .size = (@sizeOf(u64) * 3) - 1, .offset = &table.table[0] };
+    var gdt_table: gdt.Description = .{ .size = (@sizeOf(u64) * 3) - 1, .offset = &Table.table[0] };
     gdt.init(&gdt_table);
 }
 
@@ -70,7 +68,7 @@ extern const KERNEL_STACK_START: i32;
 extern const KERNEL_STACK_END: i32;
 
 fn setup_interrupts(allocator: *std.mem.Allocator) !void {
-    const idt_offset_table = try allocator.alloc(idt.gate, 256);
+    const idt_offset_table = try allocator.alloc(idt.Gate, 256);
     const idt_table = idt.new_default(idt_offset_table);
     idt.init(@intFromPtr(&idt_table));
 }
@@ -97,7 +95,7 @@ fn int(comptime num: u32) void {
         : [num] "n" (num),
     );
 }
-const memMap = struct {
+const MemMap = struct {
     kernel_start: usize,
     kernel_end: usize,
     kernel_virt_start: usize,
@@ -114,7 +112,7 @@ const memMap = struct {
     var instance: Self = undefined;
 
     pub fn init() Self {
-        memMap.instance = .{
+        MemMap.instance = .{
             .kernel_start = @intFromPtr(&KERNEL_START),
             .kernel_end = @intFromPtr(&KERNEL_END),
             .kernel_virt_start = @intFromPtr(&KERNEL_VIRT_START),
@@ -128,14 +126,15 @@ const memMap = struct {
             .kernel_stack_start = @intFromPtr(&KERNEL_STACK_START),
             .kernel_stack_end = @intFromPtr(&KERNEL_STACK_END),
         };
-        return memMap.instance;
+        return MemMap.instance;
     }
 };
 
 export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) noreturn {
     _ = multiboot_info; // autofix
 
-    const mem_map = memMap.init();
+    const mem_map = MemMap.init();
+    _ = mem_map;
     var temp_alloc = std.heap.FixedBufferAllocator.init(&kernel_allocator_buffer);
     var alloc = temp_alloc.allocator();
     uart.init();
@@ -146,7 +145,6 @@ export fn kernel_main(multiboot_info: *multiboot.multiboot_info_t) callconv(.C) 
         std.debug.panic("wot da heall man {}\n", .{err});
     };
     console.write("wot da heall\n");
-    paging.init(mem_map.kernel_start, mem_map.kernel_end, mem_map.kernel_virt_start, mem_map.kernel_virt_start);
 
     while (true) {}
 }

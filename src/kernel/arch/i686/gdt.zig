@@ -1,17 +1,17 @@
 const std = @import("std");
-pub const description = packed struct {
+pub const Description = packed struct {
     size: u16,
     offset: *const u64,
 };
 
 // note(shahzad): no need to give a shit abt padding struct it's only for
 // convenience
-pub const entry = struct {
+pub const Entry = struct {
     limit: u20,
     base: u32,
     access_byte: u8,
     flags: u4,
-    pub fn to_anal_format(ent: entry) u64 {
+    pub fn to_anal_format(ent: Entry) u64 {
         var anal_formatted: u64 = 0;
         var target: [*]u8 = @ptrCast(&anal_formatted);
         if (ent.limit > 0xFFFFF) {
@@ -37,7 +37,6 @@ pub const entry = struct {
         return anal_formatted;
     }
 };
-pub extern fn gdt_init(arg: *description) callconv(.Stdcall) void;
+pub extern fn gdt_init(arg: *Description) callconv(.Stdcall) void;
 
-//note(shahzad): idk why i am calling this function init but it is what it is
 pub const init = gdt_init;
